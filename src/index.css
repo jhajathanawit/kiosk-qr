@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ตัวอย่างปรับ global เล็กน้อยได้ตามชอบ */
+/* html, body { @apply bg-slate-50 text-slate-800; } */
