@@ -5,6 +5,8 @@ import { OnScreenKeyboard } from "./components/OnScreenKeyboard";
 import logo from "./img/Logo.png";
 
 type Lang = "th" | "en" | "zh";
+// เพิ่มชนิดคำนำหน้าที่เป็นความหมายกลาง
+type Prefix = "" | "male" | "female";
 
 const T = {
   th: {
@@ -29,15 +31,17 @@ const T = {
     language: "ภาษา",
     clearAll: "ล้างข้อมูล / Clear / 清除",
     inactivityWarn: "ไม่มีการใช้งาน 1 นาที—ระบบจะล้างข้อมูลอัตโนมัติในอีก 1 นาที",
-    // Modal เตือน inactivity + countdown
     inactivityTitle: "ไม่มีการใช้งาน",
     inactivityBody: (sec: number) => `ระบบจะล้างข้อมูลอัตโนมัติใน ${sec} วินาที`,
     inactivityAction: "ต่อการใช้งาน",
     inactivityExit: "ออกจากระบบ",
-    // QR Modal
     qrTitle: "แสดงคิวอาร์โค้ด",
     qrBody: (sec: number) => `หน้าจะปิดอัตโนมัติใน ${sec} วินาที`,
     qrDone: "เสร็จสิ้น",
+    // เพิ่มข้อความสำหรับคำนำหน้า
+    prefixLabel: "คำนำหน้า",
+    prefixMale: "นช.",
+    prefixFemale: "นญ.",
   },
   en: {
     title: "QR Code Ordering System",
@@ -68,6 +72,10 @@ const T = {
     qrTitle: "Show QR Code",
     qrBody: (sec: number) => `This screen will close in ${sec} seconds`,
     qrDone: "Done",
+    // คำนำหน้าภาษาอังกฤษ
+    prefixLabel: "Title",
+    prefixMale: "Mr.",
+    prefixFemale: "Ms.",
   },
   zh: {
     title: "二维码下单系统",
@@ -98,6 +106,10 @@ const T = {
     qrTitle: "显示二维码",
     qrBody: (sec: number) => `此画面将在 ${sec} 秒后关闭`,
     qrDone: "完成",
+    // คำนำหน้าภาษาจีน
+    prefixLabel: "称谓",
+    prefixMale: "Mr.",
+    prefixFemale: "Ms.",
   },
 } as const;
 
@@ -144,6 +156,8 @@ export default function App() {
   const [lang, setLang] = useState<Lang>("th");
 
   // ===== ฟอร์ม =====
+  // คำนำหน้าผู้ทำรายการ (ความหมายกลาง แล้วแปลงเป็นคำตามภาษา)
+  const [depositorPrefix, setDepositorPrefix] = useState<Prefix>("");
   const [depositor, setDepositor] = useState("");
   const [visitorId, setVisitorId] = useState("");
   const [prisoner, setPrisoner] = useState("");
@@ -226,12 +240,29 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
+  const L = T[lang];
+
+  // แปลงค่า prefix (male/female) ให้เป็นคำตามภาษา
+  const prefixLabelForLang = (p: Prefix, useLang: Lang) => {
+    if (p === "male") return T[useLang].prefixMale;
+    if (p === "female") return T[useLang].prefixFemale;
+    return "";
+  };
+
   const buildUrl = (useLang: Lang) => {
     const base = "https://kiosk-mobile.vercel.app/#/qr";
     const nonce = String(Date.now()); // anti-cache
+
+    // รวมคำนำหน้าตามภาษา + ชื่อผู้ทำรายการ
+    const depositorWithPrefix = sanitize(
+      [prefixLabelForLang(depositorPrefix, useLang), sanitize(depositor)]
+        .filter(Boolean)
+        .join(" ")
+    );
+
     const segRaw = [
       useLang,
-      sanitize(depositor) || "-",
+      depositorWithPrefix || "-",
       sanitize(visitorId) || "-",
       sanitize(prisoner) || "-",
       sanitize(zone) || "-", // optional
@@ -251,6 +282,7 @@ export default function App() {
   const clearAllNow = () => {
     localStorage.clear();
     sessionStorage.clear();
+    setDepositorPrefix(""); // รีเซ็ตคำนำหน้า
     setDepositor("");
     setVisitorId("");
     setPrisoner("");
@@ -269,22 +301,19 @@ export default function App() {
     clearAllAndThai();
   };
 
-  const L = T[lang];
-
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="w-full bg-red-800 py-4 px-6 flex items-center justify-between text-white shadow-md">
         <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <img src={logo} alt="Logo" className="w-16 h-16" />
+          </div>
 
-        <div className="flex items-center gap-4">
-          <img src={logo} alt="Logo" className="w-16 h-16" />
-        </div>
-
-        <div >
-          <h1 className="text-2xl font-bold">{L.title}</h1>
-          <p className="text-sm">{L.subtitle}</p>
-        </div>
+          <div>
+            <h1 className="text-2xl font-bold">{L.title}</h1>
+            <p className="text-sm">{L.subtitle}</p>
+          </div>
         </div>
 
         {/* มุมขวาบน: สลับภาษา + ล้างข้อมูล */}
@@ -296,9 +325,7 @@ export default function App() {
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                className={`px-2 py-1 rounded ${
-                  lang === l ? "bg-white text-red-800" : "hover:bg-white/20"
-                }`}
+                className={`px-2 py-1 rounded ${lang === l ? "bg-white text-red-800" : "hover:bg-white/20"}`}
               >
                 {l.toUpperCase()}
               </button>
@@ -331,20 +358,43 @@ export default function App() {
               <label htmlFor="depositor" className="block text-sm text-gray-600 mb-1">
                 {L.depositor}
               </label>
-              <div className="relative">
-                <input
-                  id="depositor"
-                  value={depositor}
-                  onChange={(e) => setDepositor(e.target.value)}
-                  onFocus={(e) => {
-                    setFocusedEl(e.currentTarget);
-                    setKbVisible(true);
-                  }}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
-                  placeholder={L.depositorPh}
-                  autoComplete="off"
-                />
-                <KbIcon className="absolute right-2 top-2.5 text-gray-400" />
+
+              {/* แถวเลือกคำนำหน้า + ช่องกรอกชื่อ */}
+              <div className="flex gap-2">
+                {/* Select คำนำหน้า */}
+                <div className="w-28">
+                  <label className="sr-only" htmlFor="depositorPrefix">
+                    {L.prefixLabel}
+                  </label>
+                  <select
+                    id="depositorPrefix"
+                    value={depositorPrefix}
+                    onChange={(e) => setDepositorPrefix(e.target.value as Prefix)}
+                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
+                    title={L.prefixLabel}
+                  >
+                    <option value="">{L.prefixLabel}</option>
+                    <option value="male">{L.prefixMale}</option>
+                    <option value="female">{L.prefixFemale}</option>
+                  </select>
+                </div>
+
+                {/* ช่องกรอกชื่อ */}
+                <div className="relative flex-1">
+                  <input
+                    id="depositor"
+                    value={depositor}
+                    onChange={(e) => setDepositor(e.target.value)}
+                    onFocus={(e) => {
+                      setFocusedEl(e.currentTarget);
+                      setKbVisible(true);
+                    }}
+                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
+                    placeholder={L.depositorPh}
+                    autoComplete="off"
+                  />
+                  <KbIcon className="absolute right-2 top-2.5 text-gray-400" />
+                </div>
               </div>
             </div>
 
