@@ -8,6 +8,65 @@ type Lang = "th" | "en" | "zh";
 // เพิ่มชนิดคำนำหน้าที่เป็นความหมายกลาง
 type Prefix = "" | "male" | "female";
 
+/** 🔒 กันปัด/ซูม/ย้อน/ช็อตคัด หลุดจากหน้า (ย้ายจาก useEffect ระดับไฟล์มาไว้ใน hook) */
+function useKioskGuards() {
+  useEffect(() => {
+    // กัน pinch / gesture (อีเวนต์พิเศษ บางเบราว์เซอร์เท่านั้น)
+    const onGesture = (e: Event) => { e.preventDefault(); e.stopPropagation(); };
+
+    // กัน Ctrl+Wheel zoom
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); }
+    };
+
+    // กันคลิกขวา
+    const onCtx = (e: MouseEvent) => { e.preventDefault(); };
+
+    // กันช็อตคัตที่พาหลุด
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (
+        (ctrl && ["+", "=", "-", "0", "p", "n", "t", "w"].includes(k)) || // zoom/print/new/close tab
+        k === "f11" || k === "f1" ||
+        (e.altKey && (k === "arrowleft" || k === "arrowright")) // alt+←/→
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    // กัน Back navigation (ปัดย้อน/ปุ่มย้อนในเว็บ)
+    const blockBack = () => {
+      history.pushState(null, "", location.href);
+    };
+
+    // --- add listeners ---
+    document.addEventListener("gesturestart" as any, onGesture as any, { passive: false } as any);
+    document.addEventListener("gesturechange" as any, onGesture as any, { passive: false } as any);
+    document.addEventListener("gestureend" as any, onGesture as any, { passive: false } as any);
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("contextmenu", onCtx);
+    window.addEventListener("keydown", onKey, true); // capture=true
+
+    blockBack();
+    window.addEventListener("popstate", blockBack);
+
+    // --- cleanup ---
+    return () => {
+      document.removeEventListener("gesturestart" as any, onGesture as any, { passive: false } as any);
+      document.removeEventListener("gesturechange" as any, onGesture as any, { passive: false } as any);
+      document.removeEventListener("gestureend" as any, onGesture as any, { passive: false } as any);
+
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("contextmenu", onCtx);
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("popstate", blockBack);
+    };
+  }, []);
+}
+
 const T = {
   th: {
     title: "ระบบสร้างคิวอาร์โค้ดสำหรับสั่งสินค้า",
@@ -152,6 +211,9 @@ function useInactivityTimers(onWarn: () => void, onReset: () => void) {
 }
 
 export default function App() {
+  // 🔒 เปิดตัวป้องกันคีออสก์
+  useKioskGuards();
+
   // ===== ภาษา (เปลี่ยนทั้งหน้า) =====
   const [lang, setLang] = useState<Lang>("th");
 

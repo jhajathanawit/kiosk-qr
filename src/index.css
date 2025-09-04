@@ -4,3 +4,25 @@
 
 /* ตัวอย่างปรับ global เล็กน้อยได้ตามชอบ */
 /* html, body { @apply bg-slate-50 text-slate-800; } */
+html, body {
+  overscroll-behavior: none;
+  touch-action: manipulation;  /* อนุญาต tap แต่ไม่อนุญาต pan/zoom */
+  -ms-touch-action: manipulation;
+}
+
+/* กันเลือกข้อความโดยไม่ตั้งใจ */
+* {
+  user-select: none;
+}
+
+/* เปิดให้เลือก/แตะได้เฉพาะช่องกรอก */
+input, textarea, [contenteditable="true"], .allow-select {
+  user-select: text;
+  touch-action: auto;
+}
+
+/* ถ้าหน้าควรอยู่พอดีจอ ให้กันเลื่อนเลยก็ได้ */
+html, body {
+  height: 100%;
+  
+}
