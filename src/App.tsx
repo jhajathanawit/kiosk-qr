@@ -30,7 +30,7 @@ const T = {
     inactivityTitle: "ไม่มีการใช้งาน",
     inactivityBody: (sec: number) => `ระบบจะล้างข้อมูลอัตโนมัติใน ${sec} วินาที`,
     inactivityAction: "ต่อการใช้งาน",
-    inactivityExit: "ออกจากระบบ",
+    inactivityExit: "ล้างข้อมูล",
     qrTitle: "แสดงคิวอาร์โค้ด",
     qrBody: (sec: number) => `หน้าจะปิดอัตโนมัติใน ${sec} วินาที`,
     qrDone: "เสร็จสิ้น",
