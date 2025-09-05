@@ -174,35 +174,82 @@ export function OnScreenKeyboard({
   const { enRows, thRows } = useKeyboardLayouts();
   const rows = layout === "en" ? enRows : thRows;
 
-  // ✅ ป้องกัน blur ของ input เมื่อกดคีย์บอร์ดบนจอ
+  // กัน blur จากการแตะพื้นที่คีย์บอร์ด
   const containerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const swallow = (e: Event) => { e.preventDefault(); };
+    const swallow = (e: Event) => e.preventDefault();
     el.addEventListener("mousedown", swallow);
-    el.addEventListener("touchstart", swallow, { passive: false } as any);
     el.addEventListener("pointerdown", swallow);
+    // ต้อง passive: false เพื่ออนุญาต preventDefault บน touch
+    el.addEventListener("touchstart", swallow as any, { passive: false } as any);
     return () => {
       el.removeEventListener("mousedown", swallow);
-      el.removeEventListener("touchstart", swallow as any);
       el.removeEventListener("pointerdown", swallow);
+      el.removeEventListener("touchstart", swallow as any);
     };
   }, [visible]);
+
+  const focusBack = () => {
+    if (targetEl) targetEl.focus();
+  };
+
+  const dispatchValueChange = (el: HTMLInputElement | HTMLTextAreaElement) => {
+    // ให้ React รับ onChange/controlled state
+    try {
+      el.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    } catch {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  };
+
+  const insertText = (txt: string) => {
+    if (!targetEl) return;
+    focusBack();
+    const start = (targetEl as any).selectionStart ?? targetEl.value.length;
+    const end = (targetEl as any).selectionEnd ?? targetEl.value.length;
+    targetEl.setRangeText(txt, start, end, "end");
+    dispatchValueChange(targetEl);
+  };
+
+  const doBackspace = () => {
+    if (!targetEl) return;
+    focusBack();
+    const start = (targetEl as any).selectionStart ?? 0;
+    const end = (targetEl as any).selectionEnd ?? 0;
+    if (start !== end) {
+      targetEl.setRangeText("", start, end, "end");
+    } else if (start > 0) {
+      targetEl.setRangeText("", start - 1, start, "end");
+    }
+    dispatchValueChange(targetEl);
+  };
+
+  const moveFocusToNextInput = () => {
+    // หาอินพุตทั้งหมดที่โฟกัสได้ในหน้า แล้วเลื่อนไปตัวถัดไป
+    const focusables = Array.from(
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        'input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"])'
+      )
+    );
+    const idx = focusables.indexOf(targetEl as any);
+    const next = idx >= 0 ? focusables[idx + 1] ?? focusables[0] : focusables[0];
+    next?.focus();
+  };
 
   const labelForKey = (k: KeyDef) => {
     if (k.type === "char") {
       if (layout === "en") {
         const isLetter = k.normal.length === 1 && /[a-z]/i.test(k.normal);
         if (isLetter) {
-          const upper = isCaps !== isShift; // XOR (Caps ^ Shift)
+          const upper = isCaps !== isShift; // XOR
           return upper ? k.normal.toUpperCase() : k.normal.toLowerCase();
         }
         return isShift && k.shift ? k.shift : k.normal;
-      } else {
-        // ไทย: ใช้ normal/shift (Caps ไม่ส่งผล)
-        return isShift && k.shift ? k.shift : k.normal;
       }
+      // ไทย: ตาม normal/shift (Caps ไม่เกี่ยว)
+      return isShift && k.shift ? k.shift : k.normal;
     }
     if ("label" in k && k.label) return k.label;
     if (k.type === "backspace") return "⌫";
@@ -216,48 +263,19 @@ export function OnScreenKeyboard({
     return "";
   };
 
-  // ✅ ช่วยให้ React/State ฝั่งฟอร์มรับรู้ว่าค่าถูกแก้
-  const dispatchValueChange = (el: HTMLInputElement | HTMLTextAreaElement) => {
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-  };
-
-  // ✅ ใช้ setRangeText เพื่อ "แทรก/แทนที่" โดยไม่ลบค่าทั้งช่อง
-  const insertText = (txt: string) => {
-    if (!targetEl) return;
-    targetEl.focus();
-    const start = (targetEl as any).selectionStart ?? targetEl.value.length;
-    const end = (targetEl as any).selectionEnd ?? targetEl.value.length;
-    targetEl.setRangeText(txt, start, end, "end");
-    dispatchValueChange(targetEl);
-  };
-
-  const doBackspace = () => {
-    if (!targetEl) return;
-    targetEl.focus();
-    const start = (targetEl as any).selectionStart ?? 0;
-    const end = (targetEl as any).selectionEnd ?? 0;
-    if (start !== end) {
-      targetEl.setRangeText("", start, end, "end");
-    } else if (start > 0) {
-      targetEl.setRangeText("", start - 1, start, "end");
-    }
-    dispatchValueChange(targetEl);
-  };
-
   const onKeyPress = (k: KeyDef) => {
     switch (k.type) {
       case "char": {
         const label = labelForKey(k);
         insertText(label);
-        if (isShift) setIsShift(false); // Shift เป็นการกดชั่วคราว
+        if (isShift) setIsShift(false); // shift ชั่วคราว
         break;
       }
       case "backspace":
         doBackspace();
         break;
       case "tab":
-        insertText("\t");
+        moveFocusToNextInput(); // ถ้าอยากแทรก \t ให้ใช้ insertText("\t")
         break;
       case "enter":
         insertText("\n");
@@ -267,15 +285,14 @@ export function OnScreenKeyboard({
         break;
       case "clear":
         if (targetEl) {
-          targetEl.focus();
-          // ล้างแบบปลอดภัยด้วย setRangeText ทั้งช่วง
+          focusBack();
           targetEl.setSelectionRange(0, targetEl.value.length);
           targetEl.setRangeText("", 0, targetEl.value.length, "end");
           dispatchValueChange(targetEl);
         }
         break;
       case "lang":
-        setLayout(layout === "en" ? "th" : "en");
+        setLayout((p) => (p === "en" ? "th" : "en"));
         break;
       case "caps":
         setIsCaps((v) => !v);
@@ -298,13 +315,27 @@ export function OnScreenKeyboard({
           {row.map((k, idx) => (
             <button
               key={idx}
-              onClick={() => onKeyPress(k)}
+              // สำคัญ: ใช้ทั้ง onMouseDown และ onTouchStart เพื่อยิงทันที
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onKeyPress(k);
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                onKeyPress(k);
+              }}
+              // เผื่อเดสก์ท็อปบางกรณีที่ต้องการ onClick ด้วย
+              onClick={(e) => {
+                e.preventDefault();
+                onKeyPress(k);
+              }}
               className={`px-3 py-3 rounded border text-center active:scale-[0.98] select-none ${
                 (k.type === "shift" && isShift) || (k.type === "caps" && isCaps)
                   ? "bg-gray-200"
                   : "bg-white"
               }`}
               style={keyWidthStyle(k)}
+              type="button"
             >
               {labelForKey(k)}
             </button>
@@ -320,7 +351,7 @@ export function OnScreenKeyboard({
   return (
     <div
       ref={containerRef}
-      className="fixed inset-x-0 bottom-0 z-50 bg-white border-t shadow-2xl"
+      className="fixed inset-x-0 bottom-0 z-50 bg-white border-t shadow-2xl select-none"
       // กัน blur ให้ชัวร์ทุก pointer
       onMouseDown={(e) => e.preventDefault()}
       onTouchStart={(e) => e.preventDefault()}
@@ -333,13 +364,21 @@ export function OnScreenKeyboard({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setLayout(layout === "en" ? "th" : "en")}
+            onMouseDown={(e) => { e.preventDefault(); setLayout((p) => (p === "en" ? "th" : "en")); }}
+            onTouchStart={(e) => { e.preventDefault(); setLayout((p) => (p === "en" ? "th" : "en")); }}
             className="px-3 py-1 rounded border"
             aria-label="Switch keyboard"
+            type="button"
           >
             {layout === "en" ? "TH" : "EN"}
           </button>
-          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100" aria-label="Close keyboard">
+          <button
+            onMouseDown={(e) => { e.preventDefault(); onClose(); }}
+            onTouchStart={(e) => { e.preventDefault(); onClose(); }}
+            className="p-2 rounded hover:bg-gray-100"
+            aria-label="Close keyboard"
+            type="button"
+          >
             <X />
           </button>
         </div>
