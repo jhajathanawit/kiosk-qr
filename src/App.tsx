@@ -1,64 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { QrCode, AlertTriangle, Globe, Keyboard as KbIcon, Trash2 } from "lucide-react";
-import { OnScreenKeyboard } from "./components/OnScreenKeyboard";
+import {OnScreenKeyboard} from "./components/OnScreenKeyboard";
 import logo from "./img/Logo.png";
 
 type Lang = "th" | "en" | "zh";
-// เพิ่มชนิดคำนำหน้าที่เป็นความหมายกลาง
-type Prefix = "" | "male" | "female";
 
-/** 🔒 กันปัด/ซูม/ย้อน/ช็อตคัด หลุดจากหน้า (ย้ายจาก useEffect ระดับไฟล์มาไว้ใน hook) */
+/** 🔒 กันปัด/ซูม/ย้อน/ช็อตคัต หลุดจากหน้า */
 function useKioskGuards() {
   useEffect(() => {
-    // กัน pinch / gesture (อีเวนต์พิเศษ บางเบราว์เซอร์เท่านั้น)
     const onGesture = (e: Event) => { e.preventDefault(); e.stopPropagation(); };
-
-    // กัน Ctrl+Wheel zoom
-    const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); }
-    };
-
-    // กันคลิกขวา
+    const onWheel = (e: WheelEvent) => { if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); } };
     const onCtx = (e: MouseEvent) => { e.preventDefault(); };
-
-    // กันช็อตคัตที่พาหลุด
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
       if (
-        (ctrl && ["+", "=", "-", "0", "p", "n", "t", "w"].includes(k)) || // zoom/print/new/close tab
+        (ctrl && ["+", "=", "-", "0", "p", "n", "t", "w"].includes(k)) ||
         k === "f11" || k === "f1" ||
-        (e.altKey && (k === "arrowleft" || k === "arrowright")) // alt+←/→
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+        (e.altKey && (k === "arrowleft" || k === "arrowright"))
+      ) { e.preventDefault(); e.stopPropagation(); }
     };
+    const blockBack = () => { history.pushState(null, "", location.href); };
 
-    // กัน Back navigation (ปัดย้อน/ปุ่มย้อนในเว็บ)
-    const blockBack = () => {
-      history.pushState(null, "", location.href);
-    };
-
-    // --- add listeners ---
     document.addEventListener("gesturestart" as any, onGesture as any, { passive: false } as any);
     document.addEventListener("gesturechange" as any, onGesture as any, { passive: false } as any);
     document.addEventListener("gestureend" as any, onGesture as any, { passive: false } as any);
-
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("contextmenu", onCtx);
-    window.addEventListener("keydown", onKey, true); // capture=true
-
+    window.addEventListener("keydown", onKey, true);
     blockBack();
     window.addEventListener("popstate", blockBack);
 
-    // --- cleanup ---
     return () => {
       document.removeEventListener("gesturestart" as any, onGesture as any, { passive: false } as any);
       document.removeEventListener("gesturechange" as any, onGesture as any, { passive: false } as any);
       document.removeEventListener("gestureend" as any, onGesture as any, { passive: false } as any);
-
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("contextmenu", onCtx);
       window.removeEventListener("keydown", onKey, true);
@@ -79,17 +56,12 @@ const T = {
     visitorIdPh: "เช่น 1103700xxxxxxx",
     prisoner: "ชื่อผู้ต้องขัง",
     prisonerPh: "เช่น นายเอ",
-    zone: "แดน (ไม่บังคับ)",
-    zonePh: "เช่น แดน 2",
+    prisonerId: "รหัสผู้ต้องขัง",
+    prisonerIdPh: "เช่น 123456",
     createQR: "สร้าง QR",
     warnFill: "กรุณากรอกข้อมูลให้ครบถ้วน",
-    scanOnPhone: "สแกนเพื่อทำต่อบนมือถือ",
-    copyLink: "คัดลอกลิงก์",
-    downloaded: "ดาวน์โหลด QR",
-    copyDone: "คัดลอกลิงก์แล้ว",
     language: "ภาษา",
     clearAll: "ล้างข้อมูล / Clear / 清除",
-    inactivityWarn: "ไม่มีการใช้งาน 1 นาที—ระบบจะล้างข้อมูลอัตโนมัติในอีก 1 นาที",
     inactivityTitle: "ไม่มีการใช้งาน",
     inactivityBody: (sec: number) => `ระบบจะล้างข้อมูลอัตโนมัติใน ${sec} วินาที`,
     inactivityAction: "ต่อการใช้งาน",
@@ -97,10 +69,7 @@ const T = {
     qrTitle: "แสดงคิวอาร์โค้ด",
     qrBody: (sec: number) => `หน้าจะปิดอัตโนมัติใน ${sec} วินาที`,
     qrDone: "เสร็จสิ้น",
-    // เพิ่มข้อความสำหรับคำนำหน้า
-    prefixLabel: "คำนำหน้า",
-    prefixMale: "นช.",
-    prefixFemale: "นญ.",
+    qrPathError: "ไม่สามารถสร้างลิงก์ QR ได้ (โครงสร้างพารามิเตอร์ไม่ครบ)",
   },
   en: {
     title: "QR Code Ordering System",
@@ -113,17 +82,12 @@ const T = {
     visitorIdPh: "e.g. 1103700xxxxxxx",
     prisoner: "Prisoner’s Name",
     prisonerPh: "e.g. Mr. A",
-    zone: "Zone (optional)",
-    zonePh: "e.g. Zone 2",
+    prisonerId: "Prisoner ID",
+    prisonerIdPh: "e.g. 123456",
     createQR: "Create QR",
     warnFill: "Please complete all required fields",
-    scanOnPhone: "Scan to continue on mobile",
-    copyLink: "Copy Link",
-    downloaded: "Download QR",
-    copyDone: "Link copied",
     language: "Language",
     clearAll: "ล้างข้อมูล / Clear / 清除",
-    inactivityWarn: "No activity for 1 minute — data will be cleared in another 1 minute",
     inactivityTitle: "Inactivity detected",
     inactivityBody: (sec: number) => `Data will be cleared in ${sec} seconds`,
     inactivityAction: "Continue",
@@ -131,10 +95,7 @@ const T = {
     qrTitle: "Show QR Code",
     qrBody: (sec: number) => `This screen will close in ${sec} seconds`,
     qrDone: "Done",
-    // คำนำหน้าภาษาอังกฤษ
-    prefixLabel: "Title",
-    prefixMale: "Mr.",
-    prefixFemale: "Ms.",
+    qrPathError: "Failed to build QR link (missing URL segments)",
   },
   zh: {
     title: "二维码下单系统",
@@ -147,17 +108,12 @@ const T = {
     visitorIdPh: "例如 1103700xxxxxxx",
     prisoner: "在押人员姓名",
     prisonerPh: "例如 甲先生",
-    zone: "监区（选填）",
-    zonePh: "例如 第2监区",
+    prisonerId: "在押人员编号",
+    prisonerIdPh: "例如 123456",
     createQR: "生成二维码",
     warnFill: "请先填写必填信息",
-    scanOnPhone: "扫码在手机继续",
-    copyLink: "复制链接",
-    downloaded: "下载二维码",
-    copyDone: "已复制链接",
     language: "语言",
     clearAll: "ล้างข้อมูล / Clear / 清除",
-    inactivityWarn: "已无操作1分钟——1分钟后将自动清除数据",
     inactivityTitle: "检测到无操作",
     inactivityBody: (sec: number) => `将在 ${sec} 秒后自动清除数据`,
     inactivityAction: "继续使用",
@@ -165,33 +121,50 @@ const T = {
     qrTitle: "显示二维码",
     qrBody: (sec: number) => `此画面将在 ${sec} 秒后关闭`,
     qrDone: "完成",
-    // คำนำหน้าภาษาจีน
-    prefixLabel: "称谓",
-    prefixMale: "Mr.",
-    prefixFemale: "Ms.",
+    qrPathError: "无法生成二维码链接（URL 片段缺失）",
   },
 } as const;
 
 const sanitize = (s: string) => s.trim().replace(/\s+/g, " ");
 
+// ===== Auto Save =====
+const FORM_KEY = "kiosk-form-v2"; // ⚠️ เปลี่ยน key ใหม่เพราะโครงสร้างฟอร์มเปลี่ยน
+type FormPersist = {
+  lang: Lang;
+  depositor: string;
+  visitorId: string;
+  prisoner: string;
+  prisonerId: string;
+};
+const loadPersist = (): FormPersist | null => {
+  try {
+    const raw = localStorage.getItem(FORM_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as FormPersist;
+  } catch {
+    return null;
+  }
+};
+const savePersist = (data: FormPersist) => {
+  try {
+    localStorage.setItem(FORM_KEY, JSON.stringify(data));
+  } catch {}
+};
+
 function useInactivityTimers(onWarn: () => void, onReset: () => void) {
   const warnTimer = useRef<number | null>(null);
   const resetTimer = useRef<number | null>(null);
-
   const clearTimers = () => {
     if (warnTimer.current) window.clearTimeout(warnTimer.current);
     if (resetTimer.current) window.clearTimeout(resetTimer.current);
     warnTimer.current = null;
     resetTimer.current = null;
   };
-
   const arm = () => {
     clearTimers();
-    // 1 นาที เตือน, 2 นาที รีเซ็ต
     warnTimer.current = window.setTimeout(onWarn, 60_000);
     resetTimer.current = window.setTimeout(onReset, 120_000);
   };
-
   useEffect(() => {
     arm();
     const resetOnActivity = () => arm();
@@ -206,179 +179,214 @@ function useInactivityTimers(onWarn: () => void, onReset: () => void) {
       window.removeEventListener("click", resetOnActivity);
       clearTimers();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
 export default function App() {
-  // 🔒 เปิดตัวป้องกันคีออสก์
   useKioskGuards();
 
-  // ===== ภาษา (เปลี่ยนทั้งหน้า) =====
+  // ===== ภาษา =====
   const [lang, setLang] = useState<Lang>("th");
 
-  // ===== ฟอร์ม =====
-  // คำนำหน้าผู้ทำรายการ (ความหมายกลาง แล้วแปลงเป็นคำตามภาษา)
-  const [depositorPrefix, setDepositorPrefix] = useState<Prefix>("");
+  // ===== ฟอร์ม (ไม่มีคำนำหน้า/โซนแล้ว) =====
   const [depositor, setDepositor] = useState("");
   const [visitorId, setVisitorId] = useState("");
   const [prisoner, setPrisoner] = useState("");
-  const [zone, setZone] = useState("");
+  const [prisonerId, setPrisonerId] = useState("");
 
   // ===== QR =====
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
 
-  // ===== Modal เตือน inactivity =====
+  // ===== Modal =====
   const [showWarnModal, setShowWarnModal] = useState(false);
   const [countdown, setCountdown] = useState(60);
-
-  // ===== Modal แสดง QR =====
   const [showQRModal, setShowQRModal] = useState(false);
-  const [qrCountdown, setQrCountdown] = useState(180); // 3 นาที
+  const [qrCountdown, setQrCountdown] = useState(180);
 
   // ===== คีย์บอร์ดบนจอ =====
   const [kbVisible, setKbVisible] = useState(false);
   const [focusedEl, setFocusedEl] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
+  // ===== ขนาด QR (responsive) =====
+  const [qrSize, setQrSize] = useState<number>(240);
+  useEffect(() => {
+    const recalc = () => {
+      const vw = Math.min(window.innerWidth, 720);
+      const vh = Math.min(window.innerHeight, 1280);
+      const size = Math.min(420, Math.floor(Math.min(vw, vh) * 0.7));
+      setQrSize(Math.max(180, size));
+    };
+    recalc();
+    window.addEventListener("resize", recalc);
+    return () => window.removeEventListener("resize", recalc);
+  }, []);
+
+  // ต้องกรอกครบ 4 ช่อง
   const isValid = useMemo(
-    () => [depositor, visitorId, prisoner].every((v) => sanitize(v).length > 0),
-    [depositor, visitorId, prisoner]
+    () => [depositor, visitorId, prisoner, prisonerId].every((v) => sanitize(v).length > 0),
+    [depositor, visitorId, prisoner, prisonerId]
   );
 
-  // จับ inactivity: 1 นาที เปิด Modal, 2 นาที ล้าง+รีเซ็ตภาษาไทย
-  useInactivityTimers(
-    () => {
-      setCountdown(60);
-      setShowWarnModal(true);
-    },
-    () => {
-      clearAllAndThai();
-      setShowWarnModal(false);
+  // ===== โหลดค่าที่บันทึกไว้ =====
+  useEffect(() => {
+    const persisted = loadPersist();
+    if (persisted) {
+      setLang(persisted.lang ?? "th");
+      setDepositor(persisted.depositor ?? "");
+      setVisitorId(persisted.visitorId ?? "");
+      setPrisoner(persisted.prisoner ?? "");
+      setPrisonerId(persisted.prisonerId ?? "");
     }
-  );
+  }, []);
 
-  // นับถอยหลังขณะ Modal inactivity เปิด
+  // ===== Auto-Save Debounce =====
+  const saveTimer = useRef<number | null>(null);
+  const scheduleSave = () => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      savePersist({ lang, depositor, visitorId, prisoner, prisonerId });
+    }, 250);
+  };
+  useEffect(() => {
+    scheduleSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, depositor, visitorId, prisoner, prisonerId]);
+
+  // เผื่อปิดหน้าทันที
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      savePersist({ lang, depositor, visitorId, prisoner, prisonerId });
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [lang, depositor, visitorId, prisoner, prisonerId]);
+
+  // ===== Inactivity =====
+  useInactivityTimers(
+    () => { setCountdown(60); setShowWarnModal(true); },
+    () => { clearAllAndThai(); setShowWarnModal(false); }
+  );
   useEffect(() => {
     if (!showWarnModal) return;
     const id = window.setInterval(() => {
       setCountdown((prev) => {
-        if (prev <= 1) {
-          clearAllAndThai();
-          setShowWarnModal(false);
-          window.clearInterval(id);
-          return 0;
-        }
+        if (prev <= 1) { clearAllAndThai(); setShowWarnModal(false); window.clearInterval(id); return 0; }
         return prev - 1;
       });
     }, 1000);
     return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showWarnModal]);
 
-  // นับถอยหลัง 3 นาทีบน QR Modal
   useEffect(() => {
     if (!showQRModal) return;
     setQrCountdown(180);
     const id = window.setInterval(() => {
       setQrCountdown((prev) => {
-        if (prev <= 1) {
-          // ครบ 3 นาที: ปิด modal + เคลียร์ + รีเซ็ตภาษาไทย
-          handleFinishQR();
-          window.clearInterval(id);
-          return 0;
-        }
+        if (prev <= 1) { handleFinishQR(); window.clearInterval(id); return 0; }
         return prev - 1;
       });
     }, 1000);
     return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQRModal]);
 
-  // เปลี่ยนภาษาแล้ว ถ้ามี QR อยู่ ให้รีเจนตามภาษาใหม่ (ภาษาปัจจุบันต้องเป็นส่วนของ path)
+  // เปลี่ยนภาษาแล้ว regenerate QR (path ใช้ภาษาปัจจุบัน)
   useEffect(() => {
-    if (qrUrl) {
-      setQrUrl(buildUrl(lang));
-    }
+    if (qrUrl) setQrUrl(buildUrl(lang));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   const L = T[lang];
 
-  // แปลงค่า prefix (male/female) ให้เป็นคำตามภาษา
-  const prefixLabelForLang = (p: Prefix, useLang: Lang) => {
-    if (p === "male") return T[useLang].prefixMale;
-    if (p === "female") return T[useLang].prefixFemale;
-    return "";
-  };
-
   const buildUrl = (useLang: Lang) => {
     const base = "https://kiosk-mobile.vercel.app/#/qr";
-    const nonce = String(Date.now()); // anti-cache
-
-    // รวมคำนำหน้าตามภาษา + ชื่อผู้ทำรายการ
-    const depositorWithPrefix = sanitize(
-      [prefixLabelForLang(depositorPrefix, useLang), sanitize(depositor)]
-        .filter(Boolean)
-        .join(" ")
-    );
+    const nonce = String(Date.now());
 
     const segRaw = [
-      useLang,
-      depositorWithPrefix || "-",
-      sanitize(visitorId) || "-",
-      sanitize(prisoner) || "-",
-      sanitize(zone) || "-", // optional
-      nonce,
+      useLang,                     // 1) lang
+      sanitize(depositor) || "-",  // 2) depositor
+      sanitize(visitorId) || "-",  // 3) visitorId
+      sanitize(prisoner) || "-",   // 4) prisoner name
+      sanitize(prisonerId) || "-", // 5) prisonerId (แทน zone เดิม)
+      nonce,                       // 6) nonce
     ];
     const seg = segRaw.map((s) => encodeURIComponent(s));
     return `${base}/${seg.join("/")}`;
   };
 
+  const urlHasValidPath = (url: string) => {
+    try {
+      const u = new URL(url);
+      const hash = u.hash || "";
+      const parts = hash.split("/").filter(Boolean);
+      const idx = parts.findIndex((p) => p === "qr");
+      if (idx < 0) return false;
+      const tail = parts.slice(idx + 1);
+      return tail.length === 6 && tail.every((s) => typeof s === "string");
+    } catch {
+      return false;
+    }
+  };
+
   const handleCreate = () => {
+    setQrError(null);
     if (!isValid) return;
     const url = buildUrl(lang);
+    if (!urlHasValidPath(url)) {
+      setQrError(L.qrPathError);
+      setQrUrl(null);
+      setShowQRModal(false);
+      return;
+    }
     setQrUrl(url);
-    setShowQRModal(true); // แสดง QR บน modal
+    setShowQRModal(true);
   };
 
   const clearAllNow = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    setDepositorPrefix(""); // รีเซ็ตคำนำหน้า
+    localStorage.removeItem(FORM_KEY);
+    sessionStorage.removeItem(FORM_KEY);
     setDepositor("");
     setVisitorId("");
     setPrisoner("");
-    setZone("");
+    setPrisonerId("");
     setQrUrl(null);
+    setQrError(null);
   };
-
-  const clearAllAndThai = () => {
-    clearAllNow();
-    setLang("th");
-  };
-
-  const handleFinishQR = () => {
-    // ปิด modal + เคลียร์ข้อมูล + รีเซ็ตภาษาไทย
-    setShowQRModal(false);
-    clearAllAndThai();
-  };
+  const clearAllAndThai = () => { clearAllNow(); setLang("th"); };
+  const handleFinishQR = () => { setShowQRModal(false); clearAllAndThai(); };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white kiosk-wrap flex flex-col">
+      {/* Portrait responsive tweaks */}
+      <style>{`
+        @media (orientation: portrait) {
+          .kiosk-wrap .kiosk-container { max-width: 100vw; padding: 24px; }
+          .kiosk-wrap .kiosk-card { width: 100%; padding: 24px; }
+          .kiosk-wrap .kiosk-input { font-size: 18px; padding: 14px 14px; }
+          .kiosk-wrap .kiosk-label { font-size: 16px; }
+          .kiosk-wrap .kiosk-title { font-size: 22px; }
+          .kiosk-wrap .kiosk-subtitle { font-size: 14px; }
+          .kiosk-wrap .kiosk-btn { font-size: 18px; padding: 14px 16px; }
+          .kiosk-wrap header { padding: 14px 18px !important; }
+        }
+        @media (min-width: 1024px) and (orientation: landscape) {
+          .kiosk-wrap .kiosk-container { max-width: 720px; }
+        }
+      `}</style>
+
       {/* Header */}
       <header className="w-full bg-red-800 py-4 px-6 flex items-center justify-between text-white shadow-md">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-4">
             <img src={logo} alt="Logo" className="w-16 h-16" />
           </div>
-
           <div>
-            <h1 className="text-2xl font-bold">{L.title}</h1>
-            <p className="text-sm">{L.subtitle}</p>
+            <h1 className="text-2xl font-bold kiosk-title">{L.title}</h1>
+            <p className="text-sm kiosk-subtitle">{L.subtitle}</p>
           </div>
         </div>
 
-        {/* มุมขวาบน: สลับภาษา + ล้างข้อมูล */}
+        {/* Language + Clear */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
             <Globe className="w-5 h-5" />
@@ -405,8 +413,9 @@ export default function App() {
         </div>
       </header>
 
-      <div className="flex flex-col items-center justify-start p-8">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-md p-6">
+      {/* Content center X/Y */}
+      <div className="flex flex-col flex-1 items-center justify-center p-6 kiosk-container mx-auto">
+        <div className="w-full bg-white rounded-xl shadow-md p-6 kiosk-card">
           <div className="flex items-center gap-2 mb-4">
             <QrCode className="text-blue-700" />
             <h2 className="text-2xl font-bold text-blue-800">{L.makeQR}</h2>
@@ -414,54 +423,31 @@ export default function App() {
 
           <p className="text-gray-500 text-sm mb-4">{L.guide}</p>
 
-          {/* ฟอร์ม */}
-          <div className="space-y-3 mb-4">
+          {/* Form */}
+          <div className="space-y-4 mb-4">
+            {/* Depositor */}
             <div>
-              <label htmlFor="depositor" className="block text-sm text-gray-600 mb-1">
+              <label htmlFor="depositor" className="block text-sm text-gray-600 mb-1 kiosk-label">
                 {L.depositor}
               </label>
-
-              {/* แถวเลือกคำนำหน้า + ช่องกรอกชื่อ */}
-              <div className="flex gap-2">
-                {/* Select คำนำหน้า */}
-                <div className="w-28">
-                  <label className="sr-only" htmlFor="depositorPrefix">
-                    {L.prefixLabel}
-                  </label>
-                  <select
-                    id="depositorPrefix"
-                    value={depositorPrefix}
-                    onChange={(e) => setDepositorPrefix(e.target.value as Prefix)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
-                    title={L.prefixLabel}
-                  >
-                    <option value="">{L.prefixLabel}</option>
-                    <option value="male">{L.prefixMale}</option>
-                    <option value="female">{L.prefixFemale}</option>
-                  </select>
-                </div>
-
-                {/* ช่องกรอกชื่อ */}
-                <div className="relative flex-1">
-                  <input
-                    id="depositor"
-                    value={depositor}
-                    onChange={(e) => setDepositor(e.target.value)}
-                    onFocus={(e) => {
-                      setFocusedEl(e.currentTarget);
-                      setKbVisible(true);
-                    }}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
-                    placeholder={L.depositorPh}
-                    autoComplete="off"
-                  />
-                  <KbIcon className="absolute right-2 top-2.5 text-gray-400" />
-                </div>
+              <div className="relative">
+                <input
+                  id="depositor"
+                  value={depositor}
+                  onChange={(e) => setDepositor(e.target.value)}
+                  onBlur={scheduleSave}
+                  onFocus={(e) => { setFocusedEl(e.currentTarget); setKbVisible(true); }}
+                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring kiosk-input"
+                  placeholder={L.depositorPh}
+                  autoComplete="off"
+                />
+                <KbIcon className="absolute right-2 top-2.5 text-gray-400" />
               </div>
             </div>
 
+            {/* Visitor ID */}
             <div>
-              <label htmlFor="visitorId" className="block text-sm text-gray-600 mb-1">
+              <label htmlFor="visitorId" className="block text-sm text-gray-600 mb-1 kiosk-label">
                 {L.visitorId}
               </label>
               <div className="relative">
@@ -469,11 +455,9 @@ export default function App() {
                   id="visitorId"
                   value={visitorId}
                   onChange={(e) => setVisitorId(e.target.value)}
-                  onFocus={(e) => {
-                    setFocusedEl(e.currentTarget);
-                    setKbVisible(true);
-                  }}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
+                  onBlur={scheduleSave}
+                  onFocus={(e) => { setFocusedEl(e.currentTarget); setKbVisible(true); }}
+                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring kiosk-input"
                   placeholder={L.visitorIdPh}
                   inputMode="numeric"
                   autoComplete="off"
@@ -482,8 +466,9 @@ export default function App() {
               </div>
             </div>
 
+            {/* Prisoner Name */}
             <div>
-              <label htmlFor="prisoner" className="block text-sm text-gray-600 mb-1">
+              <label htmlFor="prisoner" className="block text-sm text-gray-600 mb-1 kiosk-label">
                 {L.prisoner}
               </label>
               <div className="relative">
@@ -491,11 +476,9 @@ export default function App() {
                   id="prisoner"
                   value={prisoner}
                   onChange={(e) => setPrisoner(e.target.value)}
-                  onFocus={(e) => {
-                    setFocusedEl(e.currentTarget);
-                    setKbVisible(true);
-                  }}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
+                  onBlur={scheduleSave}
+                  onFocus={(e) => { setFocusedEl(e.currentTarget); setKbVisible(true); }}
+                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring kiosk-input"
                   placeholder={L.prisonerPh}
                   autoComplete="off"
                 />
@@ -503,21 +486,20 @@ export default function App() {
               </div>
             </div>
 
+            {/* Prisoner ID (แทน zone เดิม) */}
             <div>
-              <label htmlFor="zone" className="block text-sm text-gray-600 mb-1">
-                {L.zone}
+              <label htmlFor="prisonerId" className="block text-sm text-gray-600 mb-1 kiosk-label">
+                {L.prisonerId}
               </label>
               <div className="relative">
                 <input
-                  id="zone"
-                  value={zone}
-                  onChange={(e) => setZone(e.target.value)}
-                  onFocus={(e) => {
-                    setFocusedEl(e.currentTarget);
-                    setKbVisible(true);
-                  }}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
-                  placeholder={L.zonePh}
+                  id="prisonerId"
+                  value={prisonerId}
+                  onChange={(e) => setPrisonerId(e.target.value)}
+                  onBlur={scheduleSave}
+                  onFocus={(e) => { setFocusedEl(e.currentTarget); setKbVisible(true); }}
+                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring kiosk-input"
+                  placeholder={L.prisonerIdPh}
                   autoComplete="off"
                 />
                 <KbIcon className="absolute right-2 top-2.5 text-gray-400" />
@@ -525,25 +507,27 @@ export default function App() {
             </div>
           </div>
 
-          {/* ปุ่ม */}
+          {/* Actions */}
           <div className="flex gap-3">
             <button
               onClick={handleCreate}
               disabled={!isValid}
-              className={`flex-1 ${
-                isValid ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"
-              } text-white px-4 py-3 rounded-lg font-semibold transition`}
+              className={`flex-1 ${isValid ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"} text-white rounded-lg font-semibold transition kiosk-btn`}
             >
               {L.createQR}
             </button>
           </div>
 
-          {/* เตือนให้กรอกครบ */}
-          {!isValid && qrUrl === null && (
-            <div
-              className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800 flex items-start gap-2"
-              aria-live="polite"
-            >
+          {/* Alerts */}
+          {qrError && (
+            <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-red-800 flex items-start gap-2" aria-live="assertive">
+              <AlertTriangle size={18} className="mt-0.5" />
+              <span className="text-sm">{qrError}</span>
+            </div>
+          )}
+
+          {!isValid && qrUrl === null && !qrError && (
+            <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800 flex items-start gap-2" aria-live="polite">
               <AlertTriangle size={18} className="mt-0.5" />
               <span className="text-sm">{L.warnFill}</span>
             </div>
@@ -551,28 +535,17 @@ export default function App() {
         </div>
       </div>
 
-      {/* Modal เตือน inactivity + Countdown 3 ภาษา */}
+      {/* Inactivity Modal */}
       {showWarnModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
             <h2 className="text-lg font-bold text-red-700 mb-3">{L.inactivityTitle}</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              {T[lang].inactivityBody(countdown)}
-            </p>
+            <p className="text-sm text-gray-600 mb-4">{T[lang].inactivityBody(countdown)}</p>
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => setShowWarnModal(false)}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-emerald-700 transition"
-              >
+              <button onClick={() => setShowWarnModal(false)} className="bg-emerald-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-emerald-700 transition">
                 {L.inactivityAction}
               </button>
-              <button
-                onClick={() => {
-                  clearAllAndThai();
-                  setShowWarnModal(false);
-                }}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md font-semibold hover:bg-gray-400 transition"
-              >
+              <button onClick={() => { clearAllAndThai(); setShowWarnModal(false); }} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md font-semibold hover:bg-gray-400 transition">
                 {L.inactivityExit}
               </button>
             </div>
@@ -580,26 +553,23 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal แสดง QR + Countdown 3 นาที + ปุ่มเสร็จสิ้น 3 ภาษา */}
+      {/* QR Modal */}
       {showQRModal && qrUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full text-center">
             <h2 className="text-lg font-bold text-blue-800 mb-2">{L.qrTitle}</h2>
             <p className="text-sm text-gray-600 mb-4">{L.qrBody(qrCountdown)}</p>
             <div className="flex justify-center mb-4">
-              <QRCodeCanvas id="qr-main" value={qrUrl} size={240} includeMargin level="M" />
+              <QRCodeCanvas id="qr-main" value={qrUrl} size={qrSize} includeMargin level="M" />
             </div>
-            <button
-              onClick={handleFinishQR}
-              className="w-full bg-blue-600 text-white px-4 py-3 rounded-md font-semibold hover:bg-blue-700 transition"
-            >
+            <button onClick={handleFinishQR} className="w-full bg-blue-600 text-white px-4 py-3 rounded-md font-semibold hover:bg-blue-700 transition">
               {L.qrDone}
             </button>
           </div>
         </div>
       )}
 
-      {/* คีย์บอร์ดบนจอ */}
+      {/* On-screen keyboard */}
       <OnScreenKeyboard
         targetEl={focusedEl}
         visible={kbVisible}
