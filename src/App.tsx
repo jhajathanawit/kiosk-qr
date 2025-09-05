@@ -7,42 +7,7 @@ import logo from "./img/Logo.png";
 type Lang = "th" | "en" | "zh";
 
 /** 🔒 กันปัด/ซูม/ย้อน/ช็อตคัต หลุดจากหน้า */
-function useKioskGuards() {
-  useEffect(() => {
-    const onGesture = (e: Event) => { e.preventDefault(); e.stopPropagation(); };
-    const onWheel = (e: WheelEvent) => { if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); } };
-    const onCtx = (e: MouseEvent) => { e.preventDefault(); };
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (
-        (ctrl && ["+", "=", "-", "0", "p", "n", "t", "w"].includes(k)) ||
-        k === "f11" || k === "f1" ||
-        (e.altKey && (k === "arrowleft" || k === "arrowright"))
-      ) { e.preventDefault(); e.stopPropagation(); }
-    };
-    const blockBack = () => { history.pushState(null, "", location.href); };
 
-    document.addEventListener("gesturestart" as any, onGesture as any, { passive: false } as any);
-    document.addEventListener("gesturechange" as any, onGesture as any, { passive: false } as any);
-    document.addEventListener("gestureend" as any, onGesture as any, { passive: false } as any);
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("contextmenu", onCtx);
-    window.addEventListener("keydown", onKey, true);
-    blockBack();
-    window.addEventListener("popstate", blockBack);
-
-    return () => {
-      document.removeEventListener("gesturestart" as any, onGesture as any, { passive: false } as any);
-      document.removeEventListener("gesturechange" as any, onGesture as any, { passive: false } as any);
-      document.removeEventListener("gestureend" as any, onGesture as any, { passive: false } as any);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("contextmenu", onCtx);
-      window.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("popstate", blockBack);
-    };
-  }, []);
-}
 
 const T = {
   th: {
@@ -183,7 +148,7 @@ function useInactivityTimers(onWarn: () => void, onReset: () => void) {
 }
 
 export default function App() {
-  useKioskGuards();
+  
 
   // ===== ภาษา =====
   const [lang, setLang] = useState<Lang>("th");
