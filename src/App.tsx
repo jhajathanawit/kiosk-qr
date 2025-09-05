@@ -330,37 +330,61 @@ export default function App() {
     <div className="min-h-screen bg-white kiosk-wrap flex flex-col">
       {/* Portrait responsive tweaks */}
       <style>{`
+  /* ===== Portrait tweaks: move up & scale up ===== */
   @media (orientation: portrait) {
-    .kiosk-wrap .kiosk-container { 
-      max-width: 100vw; 
-      padding: 28px; 
+    /* คอนเทนเนอร์: ขยับขึ้นด้านบน (เลิกกลางจอ) */
+    .kiosk-wrap .kiosk-container {
+      max-width: 100vw;
+      padding: 36px 28px 28px 28px;   /* บนเยอะขึ้น */
+      justify-content: flex-start !important; /* จาก justify-center -> ขึ้นด้านบน */
+      align-items: center !important;         /* คงกึ่งกลางแนวนอน */
+      gap: 18px;
     }
 
-    /* กล่องฟอร์มกว้างขึ้น เกือบเต็มหน้าจอ */
-    .kiosk-wrap .kiosk-card { 
-      width: 90%; 
-      max-width: 95vw; 
-      margin: 0 auto; 
-      padding: 36px; 
+    /* กล่องฟอร์ม: เต็มกว้าง + padding เยอะขึ้น */
+    .kiosk-wrap .kiosk-card {
+      width: 100%;
+      max-width: 100vw;
+      margin: 0 auto;
+      padding: 44px;                 /* จาก 36 -> 44 */
     }
 
-    /* อินพุตใหญ่ขึ้น ให้กดง่าย */
-    .kiosk-wrap .kiosk-input { 
-      font-size: 24px; 
-      padding: 20px 20px; 
+    /* อินพุต: ใหญ่ขึ้น กดง่ายขึ้น */
+    .kiosk-wrap .kiosk-input {
+      font-size: 28px;               /* จาก 24 -> 28 */
+      padding: 24px 24px;            /* จาก 20 -> 24 */
     }
 
-    .kiosk-wrap .kiosk-label { font-size: 20px; margin-bottom: 6px; }
-    .kiosk-wrap .kiosk-title { font-size: 28px; }
-    .kiosk-wrap .kiosk-subtitle { font-size: 18px; }
-
-    /* ปุ่มใหญ่ขึ้น */
-    .kiosk-wrap .kiosk-btn { 
-      font-size: 24px; 
-      padding: 20px 22px; 
+    /* ป้ายกำกับ/ชื่อเรื่อง */
+    .kiosk-wrap .kiosk-label { 
+      font-size: 22px;               /* จาก 20 -> 22 */
+      margin-bottom: 8px; 
+    }
+    .kiosk-wrap .kiosk-title { 
+      font-size: 32px;               /* จาก 28 -> 32 */
+      line-height: 1.2; 
+    }
+    .kiosk-wrap .kiosk-subtitle { 
+      font-size: 20px;               /* จาก 18 -> 20 */
     }
 
-    .kiosk-wrap header { padding: 18px 22px !important; }
+    /* ปุ่ม: ใหญ่ขึ้น */
+    .kiosk-wrap .kiosk-btn {
+      font-size: 28px;               /* จาก 24 -> 28 */
+      padding: 24px 26px;            /* จาก 20x22 -> 24x26 */
+    }
+
+    /* เฮดเดอร์: padding มากขึ้นนิดหน่อย */
+    .kiosk-wrap header { 
+      padding: 20px 24px !important; /* จาก 18x22 -> 20x24 */
+    }
+  }
+
+  /* ===== (ออปชัน) จอเล็กมาก: ขยายเพิ่มอีกรอบ ===== */
+  @media (orientation: portrait) and (max-width: 400px) {
+    .kiosk-wrap .kiosk-input { font-size: 30px; padding: 26px; }
+    .kiosk-wrap .kiosk-btn   { font-size: 30px; padding: 26px 28px; }
+    .kiosk-wrap .kiosk-card  { padding: 48px; }
   }
 `}</style>
 
