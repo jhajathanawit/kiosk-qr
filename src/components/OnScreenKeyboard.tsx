@@ -309,42 +309,41 @@ export function OnScreenKeyboard({
   };
 
   const rowView = useMemo(
-    () =>
-      rows.map((row, i) => (
-        <div key={i} className="flex gap-1 mb-1">
-          {row.map((k, idx) => (
-            <button
-              key={idx}
-              // สำคัญ: ใช้ทั้ง onMouseDown และ onTouchStart เพื่อยิงทันที
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onKeyPress(k);
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                onKeyPress(k);
-              }}
-              // เผื่อเดสก์ท็อปบางกรณีที่ต้องการ onClick ด้วย
-              onClick={(e) => {
-                e.preventDefault();
-                onKeyPress(k);
-              }}
-              className={`px-3 py-3 rounded border text-center active:scale-[0.98] select-none ${
-                (k.type === "shift" && isShift) || (k.type === "caps" && isCaps)
-                  ? "bg-gray-200"
-                  : "bg-white"
-              }`}
-              style={keyWidthStyle(k)}
-              type="button"
-            >
-              {labelForKey(k)}
-            </button>
-          ))}
-        </div>
-      )),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, isShift, isCaps, layout]
-  );
+  () =>
+    rows.map((row, i) => (
+      <div key={i} className="flex gap-2 mb-2 justify-center">
+        {row.map((k, idx) => (
+          <button
+            key={idx}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onKeyPress(k);
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              onKeyPress(k);
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              onKeyPress(k);
+            }}
+            className={`rounded-lg border font-bold text-center select-none shadow
+              transition active:scale-95
+              ${(k.type === "shift" && isShift) || (k.type === "caps" && isCaps)
+                ? "bg-gray-200"
+                : "bg-white"}
+              text-2xl px-4 py-5`}   // ✅ กลาง ๆ : ฟอนต์ ~24px, ปุ่มสูง ~60px
+            style={keyWidthStyle(k)}
+            type="button"
+          >
+            {labelForKey(k)}
+          </button>
+        ))}
+      </div>
+    )),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [rows, isShift, isCaps, layout]
+);
 
   if (!visible) return null;
 

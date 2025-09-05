@@ -329,63 +329,63 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white kiosk-wrap flex flex-col">
       {/* Portrait responsive tweaks */}
-     <style>{`
-  /* ===== Portrait tweaks: move up & extra large ===== */
+    <style>{`
+  /* ===== Portrait tweaks: super large kiosk ===== */
   @media (orientation: portrait) {
-    /* คอนเทนเนอร์: ขยับขึ้นด้านบน */
+    /* คอนเทนเนอร์: ด้านบนเท่าเดิม แต่ล่างเยอะขึ้นมาก */
     .kiosk-wrap .kiosk-container {
       max-width: 100vw;
-      padding: 48px 32px 32px 32px;   /* ด้านบนมากขึ้น */
+      padding: 48px 64px 96px 64px;   /* บน 48, ข้าง 64, ล่าง 96 */
       justify-content: flex-start !important;
       align-items: center !important;
-      gap: 24px;
+      gap: 36px;
     }
 
-    /* กล่องฟอร์ม */
+    /* กล่องฟอร์ม: ใหญ่แบบเต็มตา */
     .kiosk-wrap .kiosk-card {
       width: 100%;
-      max-width: 100vw;
+      max-width: 1200px;              /* กว้างสุด */
       margin: 0 auto;
-      padding: 56px;                 /* จาก 44 -> 56 */
+      padding: 80px;                  /* หนาขึ้นมาก */
     }
 
-    /* อินพุต: ใหญ่ขึ้นอีก */
+    /* อินพุต: ใหญ่พิเศษ */
     .kiosk-wrap .kiosk-input {
-      font-size: 34px;               /* จาก 28 -> 34 */
-      padding: 28px 28px;            /* จาก 24 -> 28 */
+      font-size: 40px;                /* ใหญ่ขึ้นจาก 34 → 40 */
+      padding: 36px 32px;             /* ช่องสูง ๆ */
     }
 
-    /* ป้ายกำกับ/ชื่อเรื่อง */
+    /* ป้ายกำกับ / หัวเรื่อง */
     .kiosk-wrap .kiosk-label { 
-      font-size: 26px;               /* จาก 22 -> 26 */
-      margin-bottom: 10px; 
+      font-size: 32px; 
+      margin-bottom: 14px; 
     }
     .kiosk-wrap .kiosk-title { 
-      font-size: 38px;               /* จาก 32 -> 38 */
-      line-height: 1.2; 
+      font-size: 32px; 
+      line-height: 1.2;
     }
     .kiosk-wrap .kiosk-subtitle { 
-      font-size: 24px;               /* จาก 20 -> 24 */
+      font-size: 28px; 
     }
 
-    /* ปุ่ม: ใหญ่มาก */
+    /* ปุ่ม: ใหญ่แบบแทบเต็มมือ */
     .kiosk-wrap .kiosk-btn {
-      font-size: 34px;               /* จาก 28 -> 34 */
-      padding: 28px 32px;            /* จาก 24x26 -> 28x32 */
+      font-size: 40px;
+      padding: 36px 48px;
     }
 
-    /* เฮดเดอร์: padding หนาขึ้น */
+    /* เฮดเดอร์: ขยาย padding */
     .kiosk-wrap header { 
-      padding: 24px 32px !important; /* จาก 20x24 -> 24x32 */
+      padding: 28px 40px !important;
     }
   }
 
-  /* ===== จอเล็กมาก (เช่นมือถือเล็ก ๆ) ===== */
+  /* ===== จอเล็กมาก (มือถือเล็ก ๆ) ===== */
   @media (orientation: portrait) and (max-width: 400px) {
-    .kiosk-wrap .kiosk-input { font-size: 36px; padding: 30px; }
-    .kiosk-wrap .kiosk-btn   { font-size: 36px; padding: 30px 34px; }
-    .kiosk-wrap .kiosk-card  { padding: 60px; }
-    .kiosk-wrap .kiosk-title { font-size: 42px; }
+    .kiosk-wrap .kiosk-input { font-size: 42px; padding: 38px; }
+    .kiosk-wrap .kiosk-btn   { font-size: 42px; padding: 40px 50px; }
+    .kiosk-wrap .kiosk-card  { padding: 90px; }
+    .kiosk-wrap .kiosk-title { font-size: 52px; }
   }
 `}</style>
 
@@ -435,10 +435,10 @@ export default function App() {
         <div className="w-full bg-white rounded-xl shadow-md p-6 kiosk-card">
           <div className="flex items-center gap-2 mb-4">
             <QrCode className="text-blue-700" />
-            <h2 className="text-2xl font-bold text-blue-800">{L.makeQR}</h2>
+            <h2 className="text-4xl font-bold text-blue-800">{L.makeQR}</h2>
           </div>
 
-          <p className="text-gray-500 text-sm mb-4">{L.guide}</p>
+          <p className="text-gray-500 text-xl mb-4">{L.guide}</p>
 
           {/* Form */}
           <div className="space-y-4 mb-4">
