@@ -299,20 +299,48 @@ export default function App() {
   const L = T[lang];
 
   const buildUrl = (useLang: Lang) => {
-    const base = "https://kiosk-mobile.vercel.app/#/qr";
-    const nonce = String(Date.now());
+  const base = "https://kiosk-mobile.vercel.app/#/qr";
 
-    const segRaw = [
-      useLang,                     // 1) lang
-      sanitize(depositor) || "-",  // 2) depositor
-      sanitize(visitorId) || "-",  // 3) visitorId
-      sanitize(prisoner) || "-",   // 4) prisoner name
-      sanitize(prisonerId) || "-", // 5) prisonerId (แทน zone เดิม)
-      nonce,                       // 6) nonce
-    ];
-    const seg = segRaw.map((s) => encodeURIComponent(s));
-    return `${base}/${seg.join("/")}`;
-  };
+  // ==== time helpers (show TH time clearly) ====
+  const toTH = (ms: number) =>
+    new Date(ms).toLocaleString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour12: false,
+    });
+
+  const nonce = Date.now();                 // ms (UTC epoch)
+  const exp = nonce + 3 * 60 * 60 * 1000;   // +3 ชั่วโมง
+
+  // ---- DEBUG: ทั้ง UTC และ เวลาไทย ----
+  const tzLocal = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  console.warn("[KIOSK] now(ms):", nonce,
+               "→ UTC:", new Date(nonce).toISOString(),
+               "→ TH:", toTH(nonce), "(tz local:", tzLocal, ")");
+
+  console.warn("[KIOSK] exp(ms):", exp,
+               "→ UTC:", new Date(exp).toISOString(),
+               "→ TH:", toTH(exp), "(tz local:", tzLocal, ")");
+
+  // ==== path segments ====
+  const segRaw = [
+    useLang,                     // lang
+    sanitize(depositor) || "-",  // depositor
+    sanitize(visitorId) || "-",  // visitorId
+    sanitize(prisoner) || "-",   // prisoner name
+    sanitize(prisonerId) || "-", // prisonerId
+    String(nonce),               // nonce (ms)
+  ];
+  const seg = segRaw.map((s) => encodeURIComponent(s));
+
+  // ==== extra debug query (optional) ====
+  const tzk = encodeURIComponent(tzLocal || "");
+  const genUtc = encodeURIComponent(new Date(nonce).toISOString());
+  const genTh  = encodeURIComponent(toTH(nonce));
+
+  // แนบ ?exp= (เป็น ms epoch ปกติ)
+  return `${base}/${seg.join("/")}?exp=${exp}&tzk=${tzk}&genUtc=${genUtc}&genTh=${genTh}`;
+};
+
 
   const urlHasValidPath = (url: string) => {
     try {
