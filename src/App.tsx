@@ -359,20 +359,40 @@ export default function App() {
     <div className="min-h-screen bg-white kiosk-wrap flex flex-col">
       {/* Portrait responsive tweaks */}
       <style>{`
-        @media (orientation: portrait) {
-          .kiosk-wrap .kiosk-container { max-width: 100vw; padding: 24px; }
-          .kiosk-wrap .kiosk-card { width: 100%; padding: 24px; }
-          .kiosk-wrap .kiosk-input { font-size: 18px; padding: 14px 14px; }
-          .kiosk-wrap .kiosk-label { font-size: 16px; }
-          .kiosk-wrap .kiosk-title { font-size: 22px; }
-          .kiosk-wrap .kiosk-subtitle { font-size: 14px; }
-          .kiosk-wrap .kiosk-btn { font-size: 18px; padding: 14px 16px; }
-          .kiosk-wrap header { padding: 14px 18px !important; }
-        }
-        @media (min-width: 1024px) and (orientation: landscape) {
-          .kiosk-wrap .kiosk-container { max-width: 720px; }
-        }
-      `}</style>
+  @media (orientation: portrait) {
+    .kiosk-wrap .kiosk-container { 
+      max-width: 100vw; 
+      padding: 28px; 
+    }
+
+    /* กล่องฟอร์มกว้างขึ้น เกือบเต็มหน้าจอ */
+    .kiosk-wrap .kiosk-card { 
+      width: 90%; 
+      max-width: 95vw; 
+      margin: 0 auto; 
+      padding: 36px; 
+    }
+
+    /* อินพุตใหญ่ขึ้น ให้กดง่าย */
+    .kiosk-wrap .kiosk-input { 
+      font-size: 24px; 
+      padding: 20px 20px; 
+    }
+
+    .kiosk-wrap .kiosk-label { font-size: 20px; margin-bottom: 6px; }
+    .kiosk-wrap .kiosk-title { font-size: 28px; }
+    .kiosk-wrap .kiosk-subtitle { font-size: 18px; }
+
+    /* ปุ่มใหญ่ขึ้น */
+    .kiosk-wrap .kiosk-btn { 
+      font-size: 24px; 
+      padding: 20px 22px; 
+    }
+
+    .kiosk-wrap header { padding: 18px 22px !important; }
+  }
+`}</style>
+
 
       {/* Header */}
       <header className="w-full bg-red-800 py-4 px-6 flex items-center justify-between text-white shadow-md">

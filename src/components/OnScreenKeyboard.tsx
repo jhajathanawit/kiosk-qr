@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { Keyboard as KbIcon, X } from "lucide-react";
 
 type Layout = "en" | "th";
@@ -15,7 +15,6 @@ type KeyDef =
   | { type: "lang"; label?: string; width?: number };
 
 function useKeyboardLayouts() {
-  // US ANSI: อังกฤษครบตัวเล็ก/ใหญ่/สัญลักษณ์ (Shift)
   const enRows: KeyDef[][] = [
     [
       { type: "char", normal: "`", shift: "~" },
@@ -85,8 +84,6 @@ function useKeyboardLayouts() {
     ],
   ];
 
-  // ไทย (เคดมันีมาตรฐาน) + แถวตัวเลขใช้ "เลขอารบิก" และสัญลักษณ์บนปุ่มเมื่อกด Shift
-  // หมายเหตุ: ผังไทยอาจต่างเล็กน้อยตามรุ่นคีย์บอร์ด แต่ชุดนี้เป็นมาตรฐานที่ใช้แพร่หลาย
   const thRows: KeyDef[][] = [
     [
       { type: "char", normal: "_", shift: "%" },
@@ -177,17 +174,33 @@ export function OnScreenKeyboard({
   const { enRows, thRows } = useKeyboardLayouts();
   const rows = layout === "en" ? enRows : thRows;
 
+  // ✅ ป้องกัน blur ของ input เมื่อกดคีย์บอร์ดบนจอ
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const swallow = (e: Event) => { e.preventDefault(); };
+    el.addEventListener("mousedown", swallow);
+    el.addEventListener("touchstart", swallow, { passive: false } as any);
+    el.addEventListener("pointerdown", swallow);
+    return () => {
+      el.removeEventListener("mousedown", swallow);
+      el.removeEventListener("touchstart", swallow as any);
+      el.removeEventListener("pointerdown", swallow);
+    };
+  }, [visible]);
+
   const labelForKey = (k: KeyDef) => {
     if (k.type === "char") {
       if (layout === "en") {
         const isLetter = k.normal.length === 1 && /[a-z]/i.test(k.normal);
         if (isLetter) {
-          const upper = isCaps !== isShift; // XOR: Caps ^ Shift
+          const upper = isCaps !== isShift; // XOR (Caps ^ Shift)
           return upper ? k.normal.toUpperCase() : k.normal.toLowerCase();
         }
         return isShift && k.shift ? k.shift : k.normal;
       } else {
-        // ไทย: ใช้ normal/shift ตามปุ่ม (Caps ไม่มีผลกับไทย)
+        // ไทย: ใช้ normal/shift (Caps ไม่ส่งผล)
         return isShift && k.shift ? k.shift : k.normal;
       }
     }
@@ -203,38 +216,33 @@ export function OnScreenKeyboard({
     return "";
   };
 
+  // ✅ ช่วยให้ React/State ฝั่งฟอร์มรับรู้ว่าค่าถูกแก้
+  const dispatchValueChange = (el: HTMLInputElement | HTMLTextAreaElement) => {
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  // ✅ ใช้ setRangeText เพื่อ "แทรก/แทนที่" โดยไม่ลบค่าทั้งช่อง
   const insertText = (txt: string) => {
     if (!targetEl) return;
-    const start = targetEl.selectionStart ?? targetEl.value.length;
-    const end = targetEl.selectionEnd ?? targetEl.value.length;
-    const before = targetEl.value.slice(0, start);
-    const after = targetEl.value.slice(end);
-    targetEl.value = before + txt + after;
-    const pos = start + txt.length;
-    targetEl.setSelectionRange(pos, pos);
-    targetEl.dispatchEvent(new Event("input", { bubbles: true }));
     targetEl.focus();
+    const start = (targetEl as any).selectionStart ?? targetEl.value.length;
+    const end = (targetEl as any).selectionEnd ?? targetEl.value.length;
+    targetEl.setRangeText(txt, start, end, "end");
+    dispatchValueChange(targetEl);
   };
 
   const doBackspace = () => {
     if (!targetEl) return;
-    const start = targetEl.selectionStart ?? 0;
-    const end = targetEl.selectionEnd ?? 0;
-    if (start === 0 && end === 0) return;
-    if (start !== end) {
-      const before = targetEl.value.slice(0, start);
-      const after = targetEl.value.slice(end);
-      targetEl.value = before + after;
-      targetEl.setSelectionRange(start, start);
-    } else {
-      const before = targetEl.value.slice(0, start - 1);
-      const after = targetEl.value.slice(end);
-      targetEl.value = before + after;
-      const pos = Math.max(0, start - 1);
-      targetEl.setSelectionRange(pos, pos);
-    }
-    targetEl.dispatchEvent(new Event("input", { bubbles: true }));
     targetEl.focus();
+    const start = (targetEl as any).selectionStart ?? 0;
+    const end = (targetEl as any).selectionEnd ?? 0;
+    if (start !== end) {
+      targetEl.setRangeText("", start, end, "end");
+    } else if (start > 0) {
+      targetEl.setRangeText("", start - 1, start, "end");
+    }
+    dispatchValueChange(targetEl);
   };
 
   const onKeyPress = (k: KeyDef) => {
@@ -259,10 +267,11 @@ export function OnScreenKeyboard({
         break;
       case "clear":
         if (targetEl) {
-          targetEl.value = "";
-          targetEl.setSelectionRange(0, 0);
-          targetEl.dispatchEvent(new Event("input", { bubbles: true }));
           targetEl.focus();
+          // ล้างแบบปลอดภัยด้วย setRangeText ทั้งช่วง
+          targetEl.setSelectionRange(0, targetEl.value.length);
+          targetEl.setRangeText("", 0, targetEl.value.length, "end");
+          dispatchValueChange(targetEl);
         }
         break;
       case "lang":
@@ -307,8 +316,16 @@ export function OnScreenKeyboard({
   );
 
   if (!visible) return null;
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-white border-t shadow-2xl">
+    <div
+      ref={containerRef}
+      className="fixed inset-x-0 bottom-0 z-50 bg-white border-t shadow-2xl"
+      // กัน blur ให้ชัวร์ทุก pointer
+      onMouseDown={(e) => e.preventDefault()}
+      onTouchStart={(e) => e.preventDefault()}
+      onPointerDown={(e) => e.preventDefault()}
+    >
       <div className="flex items-center justify-between p-2">
         <div className="flex items-center gap-2">
           <KbIcon />
